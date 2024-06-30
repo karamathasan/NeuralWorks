@@ -1,7 +1,11 @@
 import numpy as np
 import math
+
+
 # import matplotlib as plt
 import neuron as nrn
+import layer 
+import model as m
 '''
 a neural network has inputs, layers and outputs as objects
 inputs must be a vector
@@ -11,10 +15,14 @@ learning rate, loss function,
 '''
 
 # inputs
-# X =
-# 
-input = np.array([1,2,5,1])
-n = nrn.Neuron(1,1,"lin")
-print(n.evaluate(input))
+
+
+input = np.random.rand(16)
+model = m.Model(16,2)
+model.addHiddenLayer(4)
+model.addHiddenLayer(4)
+model.modelShape()
+print(model.predict(input))
+# print(layer.neurons[0].evaluate(input))
 
 
