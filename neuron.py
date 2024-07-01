@@ -8,11 +8,14 @@ class Neuron():
     #     self.biases = bias
     #     self.activation = activation
 
-    def __init__(self, connections):
+    def __init__(self, connections, activationFunc = None):
         self.weights = self.createRandoms( -1,1,connections)
         # self.baises = self.createRandoms(self,-1,1,connections)
         self.bias = random.uniform(-1,1)
-        self.activation = "relu"
+        if (activationFunc != None):
+            self.activationFunction = activationFunc
+        else:
+            self.activationFunction = "relu"
     
     def createRandoms(self, min, max, quantity):
         # randoms = []
@@ -24,26 +27,29 @@ class Neuron():
     def evaluate(self, input, index):
         rawVal = self.weights[index] * input + self.bias
         # rawVal = np.min(rawVal,1)
-        if self.activation == "lin":
+        if self.activationFunction == "lin":
             return rawVal
-        elif self.activation == "tanh":
+        elif self.activationFunction == "tanh":
             return math.tanh(rawVal)
-        elif self.activation == "relu":
+        elif self.activationFunction == "relu":
             return np.max(rawVal,0)
-        elif self.activation == "sigmoid":
+        elif self.activationFunction == "sigmoid":
             return 1 / (1 + np.exp(-rawVal))
+        else:
+            print("NO ACTIVATION FUNCTION FOUND!!")
+            return
         
     def setActivation(self, funcName):
-        self.activation = funcName
+        self.activationFunction = funcName
         
     def activate(self, input):
-        if self.activation == "lin":
+        if self.activationFunction == "lin":
             return input
-        elif self.activation == "tanh":
+        elif self.activationFunction == "tanh":
             return math.tanh(input)
-        elif self.activation == "relu":
+        elif self.activationFunction == "relu":
             return np.max(input,0)
-        elif self.activation == "sigmoid":
+        elif self.activationFunction == "sigmoid":
             return 1 / (1 + np.exp(-input))
         else:
             print(f"NO AVAILABLE ACTIVATION FUNCTION: {input}")
@@ -56,6 +62,6 @@ class Neuron():
         for i in range(len(self.weights)):
             result = result and (self.weights[i] == other.weights[i])
         result = result and (self.bias == other.bias)
-        result = result and (self.activation == other.activation)
+        result = result and (self.activationFunction == other.activationFunction)
         return result
     

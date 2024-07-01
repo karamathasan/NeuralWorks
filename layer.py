@@ -10,12 +10,12 @@ class Layer():
     #     self.neurons = []
     #     for i in range(neurons):
     #         self.neurons.append(n.Neuron.createRandom())
-    def __init__(self, size, connections):
+    def __init__(self, size, connections, activationFunc = None):
         self.neurons = []
         self.connections = connections
         for i in range(size):
             # generate 'size' many neurons with random weights and biases that output to 'connections' many inputs in the preceding layer 
-            self.neurons.append(n.Neuron(connections))
+            self.neurons.append(n.Neuron(connections, activationFunc))
 
     def getSize(self):
         return len(self.neurons)
@@ -61,3 +61,6 @@ class Layer():
             result = result and (self.neurons[i].equals(other.neurons[i]))
         result = result and (self.connections == other.connections)
         return result
+    
+    def getNeurons(self):
+        return self.neurons
