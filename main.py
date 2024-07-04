@@ -32,16 +32,16 @@ training_predictor, training_effector, testing_predictor, testing_effector = dat
 # X = np.random.rand(len(X))
 
 model = m.Model(len(X),len(y), "sigmoid")
-model.addHiddenLayer(4)
-model.addHiddenLayer(4)
+model.addHiddenLayer(2)
+# model.addHiddenLayer(4)
 
-print(model.train(training_predictor.to_numpy(), training_effector.to_numpy()))
-
-# y_pred = model.predict(X)
-# print(y_pred)
+# print(model.train(training_predictor.to_numpy(), training_effector.to_numpy()))
+# print(model.train(training_predictor, training_effector))
+# model.modelShape()
+y_pred = model.predict(X)
+model.train(training_predictor, training_effector)
 # model.modelShape()
 # print(model.predict(input))
-# print(layer.neurons[0].evaluate(input))
 
 
 

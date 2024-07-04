@@ -26,9 +26,8 @@ def shuffle(data, shuffleProportion = 0.5):
     for i in range(shuffleiterations):
         u = np.random.randint(0,len(data))
         v = np.random.randint(0,len(data))
+
         temp = data.iloc[u]
-
         data.iloc[u] = data.iloc[v]
-
         data.iloc[v] = temp
     
