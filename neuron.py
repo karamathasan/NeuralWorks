@@ -7,10 +7,9 @@ class Neuron():
         self.weights = self.createRandoms( -1,1,numConnections)
         self.numConnections = numConnections
         self.bias = random.uniform(-1,1)
-        # self.bias = 0
+
         self.input = None
         self.activation = 0
-        # self.connectedNodes = []
 
         if (activationFunc != None):
             self.activationFunction = activationFunc
@@ -25,21 +24,23 @@ class Neuron():
         return randoms
 
     def evaluate(self, input: np.array):
-        assert (input.shape[0] == self.numConnections)
+        assert(input.shape == self.weights.shape)
         self.input = input
-        rawVal = self.weights.dot(input) + self.bias
-        # rawVal = np.min(rawVal,1)
+        rawVal = (self.weights.dot(input)) + self.bias
+
         if self.activationFunction == "lin":
-            return rawVal
+            pass
         elif self.activationFunction == "tanh":
-            return math.tanh(rawVal)
+            rawVal = math.tanh(rawVal)
         elif self.activationFunction == "relu":
-            return np.max(rawVal,0)
+            rawVal = np.max(rawVal,0)
         elif self.activationFunction == "sigmoid":
-            return 1 / (1 + np.exp(-rawVal))
+            rawVal = 1 / (1 + np.exp(-rawVal))
         else:
             print("NO ACTIVATION FUNCTION FOUND!!")
             return
+        self.activation = rawVal
+        return rawVal
         
     def setActivation(self, funcName):
         self.activationFunction = funcName
@@ -61,17 +62,18 @@ class Neuron():
     #         return
 
     def activationFunctionDerivative(self):
+
         if self.activationFunction == "lin":
             return 1
         elif self.activationFunction == "tanh":
-            return 1/math.cosh(self.input) * math.cosh(self.input)
+            return 1 - (self.activation * self.activation) 
         elif self.activationFunction == "relu":
             if (self.input <= 0):
                 return 0
             else:
                 return 1
         elif self.activationFunction == "sigmoid":
-            return (1 / (1 + np.exp(-self.input))) * (1 - (1 / (1 + np.exp(-self.input))))
+            return self.activation * (1 - self.activation)
         else:
             print(f"NO AVAILABLE ACTIVATION FUNCTION: {input}")
             return

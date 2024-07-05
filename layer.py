@@ -26,13 +26,11 @@ class Layer():
             else:
                 self.neurons[i] = n.Neuron(connections, "relu")
 
-    def evaluate(self, input):
-        # print (len(input))
-        assert (len(input) == self.connections)
-        output = np.array([])
-        for j in range(len(self.neurons)):
-            output = np.append(output, self.neurons[j].evaluate(input))
-            self.neurons[j].activation = output
+    def evaluate(self, input: np.array):
+        assert(input.shape[0] == self.connections)
+        output = np.zeros(len(self.neurons))
+        for i in range(len(self.neurons)):
+            output[i] = self.neurons[i].evaluate(input)
         return output
     
     def equals(self, other):
@@ -46,12 +44,6 @@ class Layer():
     
     def getNeurons(self):
         return self.neurons
-    
-    def getBiases(self):
-        biases = np.array([])
-        for neuron in self.neurons:
-            biases = np.append(biases, neuron.bias)
-        return biases
 
     def getLayerActivation(self):
         layerActivation = np.array([])

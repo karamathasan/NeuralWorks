@@ -22,24 +22,18 @@ class Model():
             self.defaultActivation = activationFunc
         else:
             self.defaultActivation = "relu"
-        self.outputLayer = l.Layer(outputSize,0, activationFunc)
-        # print(self.outputLayer.bias)
+        self.outputLayer = l.Layer(outputSize, inputSize, activationFunc)
 
     def predict(self, input):
-        # assert(len(input) == self.getInputSize())
-        allLayers = np.append(self.hiddenLayers, self.outputLayer)
-        
+        allLayers = self.getLayers()
         output = input
         for i in range(len(allLayers)):
-            if (i == 0):
-                output = self.hiddenLayers[0].evaluate(input)
-            else: 
-                currentLayer = allLayers[i]
-                output = currentLayer.evaluate(output)
-            # print(output)
+            # output = self.hiddenLayers[0].evaluate(input)
+            currentLayer = allLayers[i]
+            output = currentLayer.evaluate(output)
         return output
 
-    def train(self, predictor_data, effector_data, train_method = "mini-batch"):
+    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, train_method = "iterative"):
         assert(predictor_data.shape[0] == effector_data.shape[0])      
         if train_method == "mini-batch":
             shuffle(predictor_data)
@@ -48,13 +42,38 @@ class Model():
 
             residuals = []
             for i in range(len(predictor_data)):
+                row = predictor_data.iloc[i].to_numpy()
+                prediction = self.predict(row)
+                residuals.append(effector_data.iloc[i].to_numpy() - prediction)
+
                 if (i % batch_size == 0):
-                    # back propogate and update parameters
-                    backpropagate(self, residuals)
+                    backpropagate(self,residuals)
                     residuals = []            
-                    return "training complete"
-                prediction = self.predict(predictor_data.iloc[i])
-                residuals.append(effector_data.iloc[i] - prediction)
+                    # return
+        elif train_method == "iterative":
+            residuals = []
+            for i in range(len(predictor_data)):
+                row = predictor_data.iloc[i].to_numpy()
+                prediction = self.predict(row)
+                residuals.append(effector_data.iloc[i].to_numpy() - prediction)
+                backpropagate(self,residuals)
+                residuals = []  
+        print("training complete!")
+
+    def test(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame):
+        ssr = 0 # sum of squared residuals
+        sape = 0 # sum of absolute percent error
+        for i in range(len(predictor_data)):
+            prediction = self.predict(predictor_data.iloc[i].to_numpy())
+            truth = effector_data.iloc[i].to_numpy()
+            residual = truth - prediction
+            sape += np.abs(residual) / (truth + 0.00001)
+            ssr += residual * residual
+        print("testing complete")
+        mse = ssr / len(predictor_data)
+        print(f"mean squared error: {mse}")
+        mape = sape / len(predictor_data)
+        print(f"mean absolute percent error: {mape}")
 
     '''
     layerSize should be a integer referring to the size of the layer 
@@ -109,15 +128,6 @@ class Model():
         neurons.append(self.outputLayer.getNeurons())
         return neurons
     
-    def getLayerIndex(self,layer):
-        allLayers =[]
-        allLayers = allLayers.append(self.hiddenLayers)
-        allLayers = allLayers.append(self.outputLayer)
-        for i in range(len(allLayers)):
-            if (layer.equals(allLayers[i])):
-                return i+1 
-        # return -1
-    
     def getLayerByIndex(self,index):
         if (index < len(self.hiddenLayers)):
             return self.hiddenLayers[index]
@@ -130,9 +140,3 @@ class Model():
         allLayers.extend(self.hiddenLayers)
         allLayers.append(self.outputLayer)
         return allLayers
-
-    def getHiddenLayersReversed(self):
-        reversed = []
-        for i in range(len(self.hiddenLayers)):
-            reversed.append(self.hiddenLayers[len(self.hiddenLayers) - 1 - i])
-        return reversed
