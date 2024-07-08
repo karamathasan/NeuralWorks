@@ -4,7 +4,8 @@ import random
 
 class Neuron():
     def __init__(self, numConnections, activationFunc = None):
-        self.weights = self.createRandoms( -1,1,numConnections)
+        # self.weights = self.createRandoms( -1,1,numConnections)
+        self.weights = self.initializeWeights(numConnections)
         self.numConnections = numConnections
         self.bias = random.uniform(-1,1)
 
@@ -15,6 +16,10 @@ class Neuron():
             self.activationFunction = activationFunc
         else:
             self.activationFunction = "relu"
+    
+    def initializeWeights(self, n):
+        weights = self.createRandoms(-1,1,n)
+        return weights * np.sqrt(1/ n)
     
     def createRandoms(self, min, max, quantity):
         # randoms = []

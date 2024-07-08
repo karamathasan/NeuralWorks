@@ -33,51 +33,54 @@ class Model():
             output = currentLayer.evaluate(output)
         return output
 
-    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, train_method = "iterative"):
-        assert(predictor_data.shape[0] == effector_data.shape[0])      
-        if train_method == "mini-batch":
-            shuffle(predictor_data)
-            num_batches = 10
-            batch_size = int(len(predictor_data)/num_batches)
+    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, train_method = "iterative", epoch = 1):
+        assert(predictor_data.shape[0] == effector_data.shape[0]) 
+        for j in range(epoch):    
 
-            residuals = []
-            for i in range(len(predictor_data)):
-                row = predictor_data.iloc[i].to_numpy()
-                prediction = self.predict(row)
-                residuals.append(effector_data.iloc[i].to_numpy() - prediction)
+            if train_method == "mini-batch":
+                shuffle(predictor_data)
+                num_batches = 10
+                batch_size = int(len(predictor_data)/num_batches)
 
-                if (i % batch_size == 0):
+                residuals = []
+                for i in range(len(predictor_data)):
+                    row = predictor_data.iloc[i].to_numpy()
+                    prediction = self.predict(row)
+                    residuals.append(effector_data.iloc[i].to_numpy() - prediction)
+
+                    if (i % batch_size == 0):
+                        backpropagate(self,residuals)
+                        residuals = []            
+                        
+            elif train_method == "iterative":
+                residuals = []
+                for i in range(len(predictor_data)):
+                    row = predictor_data.iloc[i].to_numpy()
+                    prediction = self.predict(row)
+                    residuals.append(effector_data.iloc[i].to_numpy() - prediction)
                     backpropagate(self,residuals)
-                    residuals = []            
-                    # return
-        elif train_method == "iterative":
-            residuals = []
-            for i in range(len(predictor_data)):
-                row = predictor_data.iloc[i].to_numpy()
-                prediction = self.predict(row)
-                residuals.append(effector_data.iloc[i].to_numpy() - prediction)
-                backpropagate(self,residuals)
-                residuals = []  
+                    residuals = []  
         print("training complete!")
 
     def test(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame):
         ssr = 0 # sum of squared residuals
-        sape = 0 # sum of absolute percent error
+        rs = 0 # sum of root squared residuals
+        sr = 0 # sum of residuals
         for i in range(len(predictor_data)):
             prediction = self.predict(predictor_data.iloc[i].to_numpy())
             truth = effector_data.iloc[i].to_numpy()
             residual = truth - prediction
-            sape += np.abs(residual) / (truth + 0.00001)
             ssr += residual * residual
-        print("testing complete")
+            # rs += np.sqrt(residual * residual) / 2
+            sr += np.abs(residual)
         mse = ssr / len(predictor_data)
         print(f"mean squared error: {mse}")
-        mape = sape / len(predictor_data)
-        print(f"mean absolute percent error: {mape}")
+        # rms = rs / len(predictor_data)
+        # print(f"root mean squared error: {rms}")
+        mr =  sr / len(predictor_data)
+        print(f"mean error: {mr}")
 
-    '''
-    layerSize should be a integer referring to the size of the layer 
-    '''
+
     def addHiddenLayer(self, layerSize):
         numHiddenLayers = len(self.hiddenLayers)
         if numHiddenLayers == 0:
@@ -90,8 +93,6 @@ class Model():
             newLayer = l.Layer(layerSize, prevLayerSize, self.defaultActivation)
             self.hiddenLayers.append(newLayer)
             self.outputLayer.resetConnections(layerSize, self.defaultActivation)
-            # self.outputLayer.resetConnections(newLayer.getSize(), self.defaultActivation)
-
 
     def getInputSize(self):
         return self.inputSize
@@ -140,3 +141,32 @@ class Model():
         allLayers.extend(self.hiddenLayers)
         allLayers.append(self.outputLayer)
         return allLayers
+    
+    def getParams(self, printParams = False):
+        modelParams = []
+        for j in range(len(self.getLayers())):
+            modelParams.append([])
+            for i in range(len(self.getLayers()[j].neurons)):
+                if (printParams is True):
+                    print(f"layer: {j}, neuron: {i}")
+                    print(f"    weights: {self.getLayers()[j].neurons[i].weights}")
+                    print(f"    bias: {self.getLayers()[j].neurons[i].bias}")
+                neuronParams = [self.getLayers()[j].neurons[i].weights, self.getLayers()[j].neurons[i].bias]
+                modelParams[j].append(neuronParams)
+        return modelParams
+                
+    def getParamDifference(self, oldParams, newParams):
+        modelDiff = []
+        for i in range(len(oldParams)):
+            modelDiff.append([])
+            for j in range(len(oldParams[i])):
+                layerWeightDiff = newParams[i][j][0] - oldParams[i][j][0]
+                layerBiasDiff = newParams[i][j][1] - oldParams[i][j][1]
+                modelDiff[i].append([layerWeightDiff, layerBiasDiff])
+
+        for j in range(len(modelDiff)):
+            for i in range(len(modelDiff[j])):
+                print(f"layer: {j}, neuron: {i}")
+                print(f"    weights change: {modelDiff[j][i][0]}")
+                print(f"    bias change: {modelDiff[j][i][1]}")
+        return modelDiff 

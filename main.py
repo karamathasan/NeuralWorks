@@ -12,20 +12,17 @@ rows = 600
 predictor = data[["TimeSpentOnCourse", "NumberOfVideosWatched", "NumberOfQuizzesTaken", "CompletionRate"]].iloc[0:rows]
 effector =  data[["CourseCompletion"]].iloc[0:rows]
 
-training_predictor, training_effector, testing_predictor, testing_effector = dataSplit(predictor, effector, 0.7)
+training_predictor, training_effector, testing_predictor, testing_effector = dataSplit(predictor, effector, 0.6, 0.8)
 
-model = m.Model(len(X),len(y), "sigmoid", 0.1)
+model = m.Model(len(X),len(y), "sigmoid", 0.01)
 model.addHiddenLayer(4)
 # model.addHiddenLayer(4)
-# model.addHiddenLayer(1)
 
-# model.modelShape()
-model.train(training_predictor, training_effector, "mini-batch")
+# old = model.getParams()
+model.test(testing_predictor, testing_effector)
+model.train(training_predictor, training_effector,'mini-batch')
+# new = model.getParams()
+
 # y_pred = model.predict(X)
 model.test(testing_predictor, testing_effector)
-
-
-
-
-
-
+# model.getParamDifference(new, old)
