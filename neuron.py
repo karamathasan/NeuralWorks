@@ -50,22 +50,6 @@ class Neuron():
     def setActivation(self, funcName):
         self.activationFunction = funcName
         
-    # def activationDerivative(self, input):
-    #     if self.activationFunction == "lin":
-    #         return 1
-    #     elif self.activationFunction == "tanh":
-    #         return 1/math.cosh(input) * math.cosh(input)
-    #     elif self.activationFunction == "relu":
-    #         if (input <= 0):
-    #             return 0
-    #         else:
-    #             return 1
-    #     elif self.activationFunction == "sigmoid":
-    #         return (1 / (1 + np.exp(-input))) * (1 - (1 / (1 + np.exp(-input))))
-    #     else:
-    #         print(f"NO AVAILABLE ACTIVATION FUNCTION: {input}")
-    #         return
-
     def activationFunctionDerivative(self):
 
         if self.activationFunction == "lin":
@@ -73,7 +57,7 @@ class Neuron():
         elif self.activationFunction == "tanh":
             return 1 - (self.activation * self.activation) 
         elif self.activationFunction == "relu":
-            if (self.input <= 0):
+            if (self.input.all() <= 0):
                 return 0
             else:
                 return 1

@@ -28,19 +28,20 @@ class Model():
         allLayers = self.getLayers()
         output = input
         for i in range(len(allLayers)):
-            # output = self.hiddenLayers[0].evaluate(input)
             currentLayer = allLayers[i]
             output = currentLayer.evaluate(output)
         return output
 
-    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, train_method = "iterative", epoch = 1):
+    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, train_method = "sgd", epoch = 1):
         assert(predictor_data.shape[0] == effector_data.shape[0]) 
         for j in range(epoch):    
 
             if train_method == "mini-batch":
                 shuffle(predictor_data)
-                num_batches = 10
-                batch_size = int(len(predictor_data)/num_batches)
+                # num_batches = 10
+                # batch_size = int(len(predictor_data)/num_batches)
+                # num_batches = int(len(predictor_data)/ batchSize)
+                batchSize = 2
 
                 residuals = []
                 for i in range(len(predictor_data)):
@@ -48,37 +49,39 @@ class Model():
                     prediction = self.predict(row)
                     residuals.append(effector_data.iloc[i].to_numpy() - prediction)
 
-                    if (i % batch_size == 0):
+                    if (i % batchSize == 0):
                         backpropagate(self,residuals)
                         residuals = []            
                         
-            elif train_method == "iterative":
-                residuals = []
+            elif train_method == "sgd":
                 for i in range(len(predictor_data)):
                     row = predictor_data.iloc[i].to_numpy()
                     prediction = self.predict(row)
-                    residuals.append(effector_data.iloc[i].to_numpy() - prediction)
+                    # print(f"prediction: {prediction}")
+                    # print(f"true: {effector_data.iloc[i].to_numpy()}")
+                    # print(f"    percent error: {np.abs(effector_data.iloc[i].to_numpy() - prediction)/effector_data.iloc[i].to_numpy() * 100}%")
+                    residuals = [effector_data.iloc[i].to_numpy() - prediction]
+                    # print(f"residuals: {residuals}")
                     backpropagate(self,residuals)
-                    residuals = []  
         print("training complete!")
 
     def test(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame):
         ssr = 0 # sum of squared residuals
-        rs = 0 # sum of root squared residuals
         sr = 0 # sum of residuals
+        ape = 0
         for i in range(len(predictor_data)):
             prediction = self.predict(predictor_data.iloc[i].to_numpy())
             truth = effector_data.iloc[i].to_numpy()
             residual = truth - prediction
             ssr += residual * residual
-            # rs += np.sqrt(residual * residual) / 2
             sr += np.abs(residual)
+            ape += 100 * np.abs(residual)/truth
         mse = ssr / len(predictor_data)
         print(f"mean squared error: {mse}")
-        # rms = rs / len(predictor_data)
-        # print(f"root mean squared error: {rms}")
         mr =  sr / len(predictor_data)
         print(f"mean error: {mr}")
+        mape = ape / len(predictor_data)
+        print(f"mean absolute percent error: {mape}")
 
 
     def addHiddenLayer(self, layerSize):
@@ -116,14 +119,12 @@ class Model():
 
     def neuronCount(self):
         count = 0
-        # count += len(self.inputLayer.getNeurons())
         for layer in self.hiddenLayers:
             count += len(layer.getNeurons())
         count += len(self.outputLayer.getNeurons())
 
     def getNeurons(self):
         neurons = []
-        # neurons.append(self.inputLayer.getNeurons())
         for hiddenLayer in self.hiddenLayers:
             neurons.append(hiddenLayer.getNeurons())
         neurons.append(self.outputLayer.getNeurons())
@@ -134,6 +135,7 @@ class Model():
             return self.hiddenLayers[index]
         elif(index == len(self.hiddenLayers)):
             return self.outputLayer
+        print(f"LAYER NOT FOUND!! index requested: {index}")
         return None
     
     def getLayers(self):

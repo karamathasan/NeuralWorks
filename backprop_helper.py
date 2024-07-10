@@ -10,19 +10,26 @@ ssr = 0
 #potential source of error
 seen = {}
 
-# def backpropagateWeight(layerIndex, neuronIndex, model):
-#     gradient = -dLdW(layerIndex, neuronIndex, model)
-#     layer = model.getLayerByIndex(layerIndex)
-#     neuron = layer.neurons[neuronIndex]
-#     # print(gradient)
-#     neuron.weights += -gradient * model.learningRate
+def reset():
+    global residuals
+    global residualSum
+    global ssr
+    residuals = []
+    residualSum = 0
+    ssr = 0
 
+def normClip(gradient, threshold = 1000):
+    clippedGrad = 0
+    if np.linalg.norm(gradient) > threshold:
+        clippedGrad = gradient * (1000/np.linalg.norm(gradient))
+    else:
+        return gradient
+    return clippedGrad
 def backpropagateWeight(layerIndex, neuronIndex, model, normalizeWeights = False):
     def dLdG(layerIndex, neuronIndex, model):
-        derivativeName = getDerivativeName("Z",layerIndex,neuronIndex,"w",layerIndex,neuronIndex)
-        # print(derivativeName)
-        # if (seen.get(derivativeName) is not None):
-        #     return seen.get(derivativeName)
+        derivativeName = getDerivativeName("L",layerIndex,neuronIndex,"g",layerIndex,neuronIndex)
+        if (seen.get(derivativeName) is not None):
+            return seen.get(derivativeName)
         layer = model.getLayerByIndex(layerIndex)
         neuron = layer.neurons[neuronIndex]
 
@@ -34,10 +41,9 @@ def backpropagateWeight(layerIndex, neuronIndex, model, normalizeWeights = False
         # print(f"{derivativeName}: {seen[derivativeName]}")
         return value
     def dLdV(layerIndex, neuronIndex, model):
-        derivativeName = getDerivativeName("Z",layerIndex,neuronIndex,"w",layerIndex,neuronIndex)
-        # print(derivativeName)
-        # if (seen.get(derivativeName) is not None):
-        #     return seen.get(derivativeName)
+        derivativeName = getDerivativeName("L",layerIndex,neuronIndex,"v",layerIndex,neuronIndex)
+        if (seen.get(derivativeName) is not None):
+            return seen.get(derivativeName)
         layer = model.getLayerByIndex(layerIndex)
         neuron = layer.neurons[neuronIndex]
 
@@ -59,7 +65,7 @@ def backpropagateWeight(layerIndex, neuronIndex, model, normalizeWeights = False
     layer = model.getLayerByIndex(layerIndex)
     neuron = layer.neurons[neuronIndex]
 
-    gradient = dLdW(layerIndex, neuronIndex, model)
+    gradient = normClip(dLdW(layerIndex, neuronIndex, model))
     # print(f"layer: {layerIndex}, neuron: {neuronIndex}:: {gradient}")
 
     if (normalizeWeights):
@@ -70,22 +76,21 @@ def backpropagateWeight(layerIndex, neuronIndex, model, normalizeWeights = False
         v = v -vGrad * model.learningRate
         neuron.weights = g * (v/np.linalg.norm(v))
     else:
-        # original = neuron.weights
-        neuron.weights = neuron.weights - gradient * model.learningRate
-        # print(f"update value: {gradient * model.learningRate}")
-        # print(f"weight difference: {original - neuron.weights}")
+        # print(f"weight change{- (gradient * model.learningRate)}")
+        neuron.weights = neuron.weights - (gradient * model.learningRate)
 
 def backpropagateBias(layerIndex, neuronIndex, model):
-    gradient = dLdB(layerIndex, neuronIndex, model)
+    gradient = normClip(dLdB(layerIndex, neuronIndex, model))
     layer = model.getLayerByIndex(layerIndex)
     neuron = layer.neurons[neuronIndex]
-    # print(gradient)
-    neuron.bias -= gradient * model.learningRate
+    # print(f"bias change{- (gradient * model.learningRate)}")
+    neuron.bias = neuron.bias - (gradient * model.learningRate) 
 
 def getDerivativeName(numerator, numerL, numerN, denominator, denomL, denomN):
     return f"d{numerator}[{numerL}, {numerN}]/d{denominator}[{denomL},{denomN}]"
 
 def backpropagate(model, Residuals):
+    reset()
     global residuals
     global ssr
     global residualSum
@@ -97,10 +102,10 @@ def backpropagate(model, Residuals):
     for i in reversed(range(len(allLayers))):
         for j in range(len(allLayers[i].neurons)):
             # print(f"layer: {i} neuron: {j}")
-            backpropagateBias(i, j,model) 
-            backpropagateWeight(i,j,model, True)
-            # for w in range(len(allLayers[i].neurons[j].weights)):
-            #     backpropagateWeight(i, j, w, model)
+            backpropagateBias(i,j,model) 
+            backpropagateWeight(i,j,model)
+    reset()
+
 
 def dLdB(layerIndex, neuronIndex, model):
     derivativeName = (getDerivativeName("L",layerIndex,neuronIndex,"b",layerIndex,neuronIndex))
@@ -112,20 +117,8 @@ def dLdB(layerIndex, neuronIndex, model):
     # print(f"{derivativeName}: {seen[derivativeName]}")
     return value
 
-# def dLdW(layerIndex, neuronIndex, model):
-#     derivativeName = (getDerivativeName("L",layerIndex,neuronIndex,"w",layerIndex,neuronIndex))
-#     # print(derivativeName)
-#     # if (seen.get(derivativeName) is not None):
-#     #     return seen.get(derivativeName)
-    
-#     value =  dZdW(layerIndex, neuronIndex, model) * dXdZ(layerIndex, neuronIndex, model) * dLdX(layerIndex, neuronIndex, model) 
-#     seen[derivativeName] = value
-#     # print(f"{derivativeName}: {seen[derivativeName]}")
-#     return value
-
 def dLdW(layerIndex, neuronIndex, model):
     derivativeName = (getDerivativeName("L",layerIndex,neuronIndex,"w",layerIndex,neuronIndex))
-    # print(derivativeName)
     # if (seen.get(derivativeName) is not None):
     #     return seen.get(derivativeName)
     
@@ -136,15 +129,11 @@ def dLdW(layerIndex, neuronIndex, model):
 
 def dLdX(layerIndex, neuronIndex, model):
     derivativeName = (getDerivativeName("L",layerIndex,neuronIndex,"X",layerIndex,neuronIndex))
-    # print(derivativeName)
     # if (seen.get(derivativeName) is not None):
     #     return seen.get(derivativeName)
     value = 0
     if (layerIndex == len(model.hiddenLayers)):
-        # L is the sum of the squared residuals
-        # L = (y-y*)^2
-        # y* = sigma(wx+b) = activation of the output layer
-        value = -2*(residualSum)
+        value = -2 * residuals[neuronIndex]
         seen[derivativeName] = value
         # print(f"{derivativeName}: {seen[derivativeName]}")
         return value
@@ -158,40 +147,27 @@ def dLdX(layerIndex, neuronIndex, model):
         # print(f"{derivativeName}: {seen[derivativeName]}")
         return value
 
-def dLidX(outputIndex, layerIndex, neuronIndex, model):
-    derivativeName = (getDerivativeName(f"L{outputIndex}",layerIndex,neuronIndex,"X",layerIndex,neuronIndex))
-    # print(derivativeName)
+def dLidX(residualIndex, layerIndex, neuronIndex, model):
+    derivativeName = (getDerivativeName(f"L{residualIndex}",layerIndex,neuronIndex,"X",layerIndex,neuronIndex))
     # if (seen.get(derivativeName) is not None):
     #     return seen.get(derivativeName)
     value = 0
     if layerIndex == len(model.hiddenLayers):
-        value = -2 * (residuals[outputIndex])
+        value = -2 * (residuals[residualIndex])
         seen[derivativeName] = value
         # print(f"{derivativeName}: {seen[derivativeName]}")
         return value
-    # value = dLidZ(outputIndex, layerIndex + 1, neuronIndex, model) * dZdX(layerIndex + 1, neuronIndex, model)
+
     sum = 0
     for i in range(len(model.getLayerByIndex(layerIndex+1).neurons)):
-        sum += dLidZ(outputIndex, layerIndex + 1, i, model) * dZdX(layerIndex + 1, i, model)
+        sum += dLidX(residualIndex, layerIndex + 1, i, model) * dXdZ(layerIndex + 1, i, model) * dZidX(i,layerIndex + 1, neuronIndex, model)
     value = sum
-    seen[derivativeName] = value
-    # print(f"{derivativeName}: {seen[derivativeName]}")
-    return value
-
-def dLidZ(outputIndex, layerIndex, neuronIndex, model):
-    derivativeName = (getDerivativeName(f"L{outputIndex}",layerIndex,neuronIndex,"Z",layerIndex,neuronIndex))
-    # print(derivativeName)
-    # if (seen.get(derivativeName) is not None):
-    #     return seen.get(derivativeName)
-    value = 0
-    value = dLidX(outputIndex, layerIndex, neuronIndex, model) * dXdZ(layerIndex, neuronIndex, model)
     seen[derivativeName] = value
     # print(f"{derivativeName}: {seen[derivativeName]}")
     return value
 
 def dXdZ(layerIndex, neuronIndex, model):
     derivativeName = getDerivativeName("X",layerIndex,neuronIndex,"Z",layerIndex,neuronIndex)
-    # print(derivativeName)
     # if (seen.get(derivativeName) is not None):
     #     return seen.get(derivativeName)
     layer = model.getLayerByIndex(layerIndex)
@@ -202,19 +178,16 @@ def dXdZ(layerIndex, neuronIndex, model):
     # print(f"{derivativeName}: {seen[derivativeName]}")
     return value
 
-def dZdX(layerIndex, neuronIndex, model):
+def dZidX(zIndex, zLayerIndex, xNeuronIndex, model):
     # del Z[L,n]/ del X[L-1,n] 
-    derivativeName = getDerivativeName("Z",layerIndex,neuronIndex,"X",layerIndex-1,neuronIndex)
-    # print(derivativeName)
+    derivativeName = getDerivativeName("Z",zLayerIndex,zIndex,"X", zLayerIndex-1, xNeuronIndex)
     # if (seen.get(derivativeName) is not None):
     #     return seen.get(derivativeName)
-    layer = model.getLayerByIndex(layerIndex)
-    neuron = layer.neurons[neuronIndex]
+    layer = model.getLayerByIndex(zLayerIndex)
+    neuron = layer.neurons[zIndex]
 
-    # value = neuron.weights
     value = 0
-    for weight in neuron.weights:
-        value += weight
+    value = neuron.weights[xNeuronIndex]
     seen[derivativeName] = value
     # print(f"{derivativeName}: {seen[derivativeName]}")
     # print(f"dZdX: {value} at {layerIndex, neuronIndex, model}" )
@@ -230,36 +203,18 @@ def dZdB(layerIndex, neuronIndex, model):
     # print(f"{derivativeName}: {seen[derivativeName]}")
     return value
 
-# def dZdW(layerIndex, neuronIndex, model):
-#     # del Z[L,n]/ del w[L,n]
-#     derivativeName = getDerivativeName("Z",layerIndex,neuronIndex,"w",layerIndex,neuronIndex)
-#     # print(derivativeName)
-#     # if (seen.get(derivativeName) is not None):
-#     #     return seen.get(derivativeName)
-#     layer = model.getLayerByIndex(layerIndex)
-#     neuron = layer.neurons[neuronIndex]
-
-#     value = 0
-#     # value = neuron.input
-#     for input in neuron.input:
-#         value += input
-#     # print(f"dZdW: {value} at {layerIndex, neuronIndex, model}" )
-#     seen[derivativeName] = value
-#     # print(f"{derivativeName}: {seen[derivativeName]}")
-#     return value
-
 def dZdW(layerIndex, neuronIndex, model):
     # del Z[L,n]/ del w[L,n]
     derivativeName = getDerivativeName("Z",layerIndex,neuronIndex,"w",layerIndex,neuronIndex)
-    # print(derivativeName)
     # if (seen.get(derivativeName) is not None):
     #     return seen.get(derivativeName)
     layer = model.getLayerByIndex(layerIndex)
     neuron = layer.neurons[neuronIndex]
 
     value = 0
-    # value = neuron.input[weightIndex]
     value = neuron.input
+    # for input in neuron.input:
+    #     value += input
     # print(f"dZdW: {value} at {layerIndex, neuronIndex, model}" )
     seen[derivativeName] = value
     # print(f"{derivativeName}: {seen[derivativeName]}")
