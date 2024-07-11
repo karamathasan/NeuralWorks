@@ -6,17 +6,15 @@ import neuron as nrn
 
 residuals = []
 residualSum = 0
-ssr = 0
 #potential source of error
 seen = {}
 
 def reset():
     global residuals
     global residualSum
-    global ssr
+    seen.clear()
     residuals = []
     residualSum = 0
-    ssr = 0
 
 def normClip(gradient, threshold = 1000):
     clippedGrad = 0
@@ -92,13 +90,12 @@ def getDerivativeName(numerator, numerL, numerN, denominator, denomL, denomN):
 def backpropagate(model, Residuals):
     reset()
     global residuals
-    global ssr
     global residualSum
     residuals = Residuals
     allLayers = model.getLayers()
     for residual in residuals:
         residualSum += residual
-        ssr += residual * residual
+
     for i in reversed(range(len(allLayers))):
         for j in range(len(allLayers[i].neurons)):
             # print(f"layer: {i} neuron: {j}")
@@ -134,6 +131,7 @@ def dLdX(layerIndex, neuronIndex, model):
     value = 0
     if (layerIndex == len(model.hiddenLayers)):
         value = -2 * residuals[neuronIndex]
+        # print()
         seen[derivativeName] = value
         # print(f"{derivativeName}: {seen[derivativeName]}")
         return value

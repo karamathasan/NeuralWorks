@@ -1,27 +1,31 @@
 import numpy as np
 import pandas as pd
 
+import loss 
 import layer as l
 from data_helper import shuffle
 from backprop_helper import backpropagate
 
 class Model():
-    # def __init__(self, NumberOfInputs, Layers):
-    #     # needs more parameters
-    #     pass
-
     '''
     inputSize refers to the length of the vector associated with the input layer. likewise for the outputSize
     the output layer SHOULD NOT use a layer object, and instead should use a vector
     '''
-    def __init__(self, inputSize = 1, outputSize = 1, activationFunc = None, learningRate = 0.01):
+    def __init__(self, inputSize = 1, outputSize = 1, activationFunc = None, lossFunc = None, learningRate = 0.01):
         self.inputSize = inputSize
         self.hiddenLayers = []
         self.learningRate = learningRate
+        
         if (activationFunc != None):
             self.defaultActivation = activationFunc
         else:
             self.defaultActivation = "relu"
+
+        if (lossFunc != None):
+            assert isinstance(lossFunc, loss.LossFunction) or isinstance(lossFunc, str), "LOSS FUNCTION PARAMETER IS NOT A STRING OR OF TYPE LOSSFUCTION"
+            self.lossFunc = lossFunc
+        else:
+            self.lossFunc = loss.SquaredError()
         self.outputLayer = l.Layer(outputSize, inputSize, activationFunc)
 
     def predict(self, input):
@@ -32,9 +36,9 @@ class Model():
             output = currentLayer.evaluate(output)
         return output
 
-    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, train_method = "sgd", epoch = 1):
+    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, train_method = "sgd", epochs = 1):
         assert(predictor_data.shape[0] == effector_data.shape[0]) 
-        for j in range(epoch):    
+        for j in range(epochs):    
 
             if train_method == "mini-batch":
                 shuffle(predictor_data)
@@ -57,13 +61,18 @@ class Model():
                 for i in range(len(predictor_data)):
                     row = predictor_data.iloc[i].to_numpy()
                     prediction = self.predict(row)
-                    # print(f"prediction: {prediction}")
-                    # print(f"true: {effector_data.iloc[i].to_numpy()}")
+                    print(f"iteration: {j,i}")
+                    print(f"prediction: {prediction}")
+                    print(f"true: {effector_data.iloc[i].to_numpy()}")
                     # print(f"    percent error: {np.abs(effector_data.iloc[i].to_numpy() - prediction)/effector_data.iloc[i].to_numpy() * 100}%")
                     residuals = [effector_data.iloc[i].to_numpy() - prediction]
+                    residualTest = self.calculateResidualsArray(effector_data.iloc[i].to_numpy(), prediction)
                     # print(f"residuals: {residuals}")
-                    backpropagate(self,residuals)
+                    backpropagate(self,residualTest)
         print("training complete!")
+
+    def calculateResidualsArray(self,y_true,y_pred):
+        return self.lossFunc.evaluateAsArray(y_true,y_pred)
 
     def test(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame):
         ssr = 0 # sum of squared residuals
@@ -82,7 +91,6 @@ class Model():
         print(f"mean error: {mr}")
         mape = ape / len(predictor_data)
         print(f"mean absolute percent error: {mape}")
-
 
     def addHiddenLayer(self, layerSize):
         numHiddenLayers = len(self.hiddenLayers)
@@ -139,6 +147,9 @@ class Model():
         return None
     
     def getLayers(self):
+        '''
+        returns layers as an array
+        '''
         allLayers = []
         allLayers.extend(self.hiddenLayers)
         allLayers.append(self.outputLayer)
