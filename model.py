@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 import loss 
-import layer as l
+import activation
+import layer 
 from data_helper import shuffle
 from backprop_helper import backpropagate
 
@@ -17,16 +18,17 @@ class Model():
         self.learningRate = learningRate
         
         if (activationFunc != None):
+            assert isinstance(activationFunc, activation.ActivationFunction) or isinstance(lossFunc, str), "LOSS FUNCTION PARAMETER IS NOT A STRING OR OF TYPE ACTIVATIONFUCTION"
             self.defaultActivation = activationFunc
         else:
-            self.defaultActivation = "relu"
+            self.defaultActivation = activation.Relu()
 
         if (lossFunc != None):
             assert isinstance(lossFunc, loss.LossFunction) or isinstance(lossFunc, str), "LOSS FUNCTION PARAMETER IS NOT A STRING OR OF TYPE LOSSFUCTION"
             self.lossFunc = lossFunc
         else:
             self.lossFunc = loss.SquaredError()
-        self.outputLayer = l.Layer(outputSize, inputSize, activationFunc)
+        self.outputLayer = layer.Layer(outputSize, inputSize, activationFunc)
 
     def predict(self, input):
         allLayers = self.getLayers()
@@ -62,13 +64,11 @@ class Model():
                     row = predictor_data.iloc[i].to_numpy()
                     prediction = self.predict(row)
                     print(f"iteration: {j,i}")
-                    print(f"prediction: {prediction}")
-                    print(f"true: {effector_data.iloc[i].to_numpy()}")
+                    print(f"    prediction: {prediction}")
+                    print(f"    true: {effector_data.iloc[i].to_numpy()}")
                     # print(f"    percent error: {np.abs(effector_data.iloc[i].to_numpy() - prediction)/effector_data.iloc[i].to_numpy() * 100}%")
-                    residuals = [effector_data.iloc[i].to_numpy() - prediction]
-                    residualTest = self.calculateResidualsArray(effector_data.iloc[i].to_numpy(), prediction)
-                    # print(f"residuals: {residuals}")
-                    backpropagate(self,residualTest)
+                    residuals = self.calculateResidualsArray(effector_data.iloc[i].to_numpy(), prediction)
+                    backpropagate(self,residuals)
         print("training complete!")
 
     def calculateResidualsArray(self,y_true,y_pred):
@@ -95,13 +95,13 @@ class Model():
     def addHiddenLayer(self, layerSize):
         numHiddenLayers = len(self.hiddenLayers)
         if numHiddenLayers == 0:
-            newLayer = l.Layer(layerSize, self.getInputSize(), self.defaultActivation)
+            newLayer = layer.Layer(layerSize, self.getInputSize(), self.defaultActivation)
             self.hiddenLayers.append(newLayer)
             self.outputLayer.resetConnections(layerSize, self.defaultActivation)
         else:
             prevLayer = self.hiddenLayers[numHiddenLayers-1]
             prevLayerSize = prevLayer.getSize()
-            newLayer = l.Layer(layerSize, prevLayerSize, self.defaultActivation)
+            newLayer = layer.Layer(layerSize, prevLayerSize, self.defaultActivation)
             self.hiddenLayers.append(newLayer)
             self.outputLayer.resetConnections(layerSize, self.defaultActivation)
 
@@ -117,7 +117,7 @@ class Model():
     
     def setOutputSize(self, size):
         lastHiddenLayer = self.hiddenLayers[len(self.hiddenLayers)-1]
-        self.outputLayer = l.Layer(size, lastHiddenLayer.getSize() ,self.defaultActivation)
+        self.outputLayer = layer.Layer(size, lastHiddenLayer.getSize() ,self.defaultActivation)
 
     def modelShape(self):
         print(f"input: {self.getInputSize()}")

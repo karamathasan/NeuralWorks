@@ -100,7 +100,7 @@ def backpropagate(model, Residuals):
         for j in range(len(allLayers[i].neurons)):
             # print(f"layer: {i} neuron: {j}")
             backpropagateBias(i,j,model) 
-            backpropagateWeight(i,j,model)
+            backpropagateWeight(i,j,model,True)
     reset()
 
 

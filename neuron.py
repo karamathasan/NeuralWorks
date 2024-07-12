@@ -2,12 +2,15 @@ import math
 import numpy as np
 import random
 
+import activation
+
 class Neuron():
     def __init__(self, numConnections, activationFunc = None):
         # self.weights = self.createRandoms( -1,1,numConnections)
         self.weights = self.initializeWeights(numConnections)
         self.numConnections = numConnections
-        self.bias = random.uniform(-1,1)
+        # self.bias = random.uniform(-1,1)
+        self.bias = 0
 
         self.input = None
         self.activation = 0
@@ -15,7 +18,7 @@ class Neuron():
         if (activationFunc != None):
             self.activationFunction = activationFunc
         else:
-            self.activationFunction = "relu"
+            self.activationFunction = activation.Relu()
     
     def initializeWeights(self, n):
         weights = self.createRandoms(-1,1,n)
@@ -31,41 +34,20 @@ class Neuron():
     def evaluate(self, input: np.array):
         assert(input.shape == self.weights.shape)
         self.input = input
-        rawVal = (self.weights.dot(input)) + self.bias
+        weightedSum = (self.weights.dot(input)) + self.bias
 
-        if self.activationFunction == "lin":
-            pass
-        elif self.activationFunction == "tanh":
-            rawVal = math.tanh(rawVal)
-        elif self.activationFunction == "relu":
-            rawVal = np.max(rawVal,0)
-        elif self.activationFunction == "sigmoid":
-            rawVal = 1 / (1 + np.exp(-rawVal))
-        else:
-            print("NO ACTIVATION FUNCTION FOUND!!")
-            return
-        self.activation = rawVal
-        return rawVal
+        activation = self.activationFunction.evaluate(weightedSum)
+        self.activation = activation
+        return activation
         
-    def setActivation(self, funcName):
-        self.activationFunction = funcName
+    def setActivation(self, activationFunc: activation.ActivationFunction):
+        self.activationFunction = activationFunc
         
     def activationFunctionDerivative(self):
-
-        if self.activationFunction == "lin":
-            return 1
-        elif self.activationFunction == "tanh":
-            return 1 - (self.activation * self.activation) 
-        elif self.activationFunction == "relu":
-            if (self.input.all() <= 0):
-                return 0
-            else:
-                return 1
-        elif self.activationFunction == "sigmoid":
-            return self.activation * (1 - self.activation)
-        else:
-            print(f"NO AVAILABLE ACTIVATION FUNCTION: {input}")
-            return
+        '''
+        may break if there has been no function calculation before derivative calculation
+        '''
+        return self.activationFunction.evaluateDerivative()
     
     def equals(self, other):
         result = True

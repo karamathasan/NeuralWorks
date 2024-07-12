@@ -60,7 +60,7 @@ class SquaredError(LossFunction):
 class BinaryCrossEntropy(LossFunction):
     def __init__(self):
         lossFunction = lambda y_true, y_pred: (-1/len(y_true)) * (y_true * np.log(y_pred) + (-1/len(y_true)) *(1-y_true)*np.log(1-y_pred))
-        lossDerivative = lambda y_true, y_pred: (-1/len(y_true)) * (y_true/y_pred) + (-1/len(y_true)) * -(1-y_true/1-y_pred)        
+        lossDerivative = lambda y_true, y_pred: (-1/len(y_true)) * (y_true/y_pred) + (1/len(y_true)) * (1-y_true/1-y_pred)        
         super().__init__(lossFunction, lossDerivative)
 
     def setLossFunc(self, lossFunction = None, lossDerivative = None):

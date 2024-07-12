@@ -2,31 +2,30 @@ import numpy as np
 import pandas as pd
 
 import model as m
-import loss as l
+
 from data_helper import dataSplit
 
 def model1():
     data = pd.read_csv("datasets\course_engagement\online_course_engagement_data.csv")
-    X = data[["TimeSpentOnCourse", "NumberOfVideosWatched", "NumberOfQuizzesTaken", "CompletionRate"]].iloc[0].to_numpy()
+    X = data[["TimeSpentOnCourse", "NumberOfVideosWatched", "NumberOfQuizzesTaken", "CompletionRate", "QuizScores"]].iloc[0].to_numpy()
     y = data[["CourseCompletion"]].iloc[0].to_numpy()
 
     rows = 600
-    predictor = data[["TimeSpentOnCourse", "NumberOfVideosWatched", "NumberOfQuizzesTaken", "CompletionRate"]].iloc[0:rows]
+    predictor = data[["TimeSpentOnCourse", "NumberOfVideosWatched", "NumberOfQuizzesTaken", "CompletionRate", "QuizScores"]].iloc[0:rows]
     effector =  data[["CourseCompletion"]].iloc[0:rows]
 
     training_predictor, training_effector, testing_predictor, testing_effector = dataSplit(predictor, effector, 0.6, 0.8)
 
-    model = m.Model(len(X),len(y), activationFunc="sigmoid", lossFunc=l.BinaryCrossEntropy() , learningRate = 0.01)
+    model = m.Model(len(X),len(y), activationFunc= m.activation.Relu(), lossFunc= m.loss.BinaryCrossEntropy() , learningRate = 0.001)
     model.addHiddenLayer(4)
-    model.addHiddenLayer(4)
-
-    # outputLayer = model.getLayerByIndex(1)
-    # outputLayer.resetConnections(outputLayer.connections, "sigmoid")
     # model.addHiddenLayer(4)
+
+    outputLayer = model.getLayerByIndex(1)
+    outputLayer.resetConnections(outputLayer.connections, m.activation.Sigmoid())
 
     old = model.getParams()
     model.test(testing_predictor, testing_effector)
-    model.train(training_predictor, training_effector,'sgd',10)
+    model.train(training_predictor, training_effector,'sgd',1)
     new = model.getParams()
 
     # y_pred = model.predict(X)
