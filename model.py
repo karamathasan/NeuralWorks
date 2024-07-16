@@ -3,6 +3,8 @@ import pandas as pd
 
 import loss 
 import activation
+import optimizer as opt 
+
 import layer 
 from data_helper import shuffle
 from backprop_helper import backpropagate
@@ -12,22 +14,18 @@ class Model():
     inputSize refers to the length of the vector associated with the input layer. likewise for the outputSize
     the output layer SHOULD NOT use a layer object, and instead should use a vector
     '''
-    def __init__(self, inputSize = 1, outputSize = 1, activationFunc = None, lossFunc = None, learningRate = 0.01):
+    def __init__(self, inputSize = 1, outputSize = 1, activationFunc = activation.Relu(), lossFunc = loss.SquaredError(), optimizer = opt.SGD(0.001)):
         self.inputSize = inputSize
         self.hiddenLayers = []
-        self.learningRate = learningRate
+        # self.learningRate = learningRate
         
-        if (activationFunc != None):
-            assert isinstance(activationFunc, activation.ActivationFunction) or isinstance(lossFunc, str), "LOSS FUNCTION PARAMETER IS NOT A STRING OR OF TYPE ACTIVATIONFUCTION"
-            self.defaultActivation = activationFunc
-        else:
-            self.defaultActivation = activation.Relu()
-
-        if (lossFunc != None):
-            assert isinstance(lossFunc, loss.LossFunction) or isinstance(lossFunc, str), "LOSS FUNCTION PARAMETER IS NOT A STRING OR OF TYPE LOSSFUCTION"
-            self.lossFunc = lossFunc
-        else:
-            self.lossFunc = loss.SquaredError()
+        assert isinstance(activationFunc, activation.ActivationFunction), "ACTIVATION FUNCTION PARAMETER IS NOT OF TYPE ACTIVATIONFUNCTION"
+        assert isinstance(lossFunc, loss.LossFunction), "LOSS FUNCTION PARAMETER IS NOT OF TYPE LOSSFUNCTION"
+        assert isinstance(optimizer, opt.Optimizer), "OPTIMIZER PARAMETER IS NOT OF TYPE OPTIMIZER"
+ 
+        self.defaultActivation = activationFunc # a default activation is made so that newly added activation functions will be set to this activationFunction
+        self.lossFunc = lossFunc
+        self.optimizer = optimizer
         self.outputLayer = layer.Layer(outputSize, inputSize, activationFunc)
 
     def predict(self, input):
@@ -38,37 +36,56 @@ class Model():
             output = currentLayer.evaluate(output)
         return output
 
-    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, train_method = "sgd", epochs = 1):
-        assert(predictor_data.shape[0] == effector_data.shape[0]) 
+    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, batch_size, epochs = 1):
+        '''
+        train the model 
+
+        Args:
+            predictor_data: dataframe with the input data to predict an output
+            effector_data: dataframe with the corresponding true outputs to the input
+            batch_size: int or string referring to the number of datapoints used to accumulate error for a backward pass
+                >>>accepted strings: "full-batch", "stochastic"
+        '''
+        assert (predictor_data.shape[0] == effector_data.shape[0]) 
+        
+
         for j in range(epochs):    
-
-            if train_method == "mini-batch":
-                shuffle(predictor_data)
-                # num_batches = 10
-                # batch_size = int(len(predictor_data)/num_batches)
-                # num_batches = int(len(predictor_data)/ batchSize)
-                batchSize = 2
-
-                residuals = []
+            print(f"epoch {j + 1} begin")
+            if (type(batch_size) == int):
+                assert (batch_size > 1), (f"INVALID INPUT FOR BATCH_SIZE, {batch_size}")
+                residuals = 0
                 for i in range(len(predictor_data)):
-                    row = predictor_data.iloc[i].to_numpy()
+                    row = predictor_data.iloc[i].to_numpy()   
+                    true = effector_data.iloc[i].to_numpy()
                     prediction = self.predict(row)
-                    residuals.append(effector_data.iloc[i].to_numpy() - prediction)
-
-                    if (i % batchSize == 0):
+                    residuals += self.calculateResidualsArray(true,prediction)
+                    if(i % batch_size == 0 and i != 0):
                         backpropagate(self,residuals)
-                        residuals = []            
-                        
-            elif train_method == "sgd":
+                        residuals = 0
+
+            elif batch_size == "full-batch":
+                residuals = 0
                 for i in range(len(predictor_data)):
                     row = predictor_data.iloc[i].to_numpy()
                     prediction = self.predict(row)
+                    true = effector_data.iloc[i].to_numpy()
+                    residuals += self.calculateResidualsArray(true, prediction)
+                backpropagate(self,residuals)
+
+            elif batch_size == "stochastic":
+                for i in range(len(predictor_data)):
+                    row = predictor_data.iloc[i].to_numpy()
+                    prediction = self.predict(row)
+                    true = effector_data.iloc[i].to_numpy()
                     print(f"iteration: {j,i}")
                     print(f"    prediction: {prediction}")
-                    print(f"    true: {effector_data.iloc[i].to_numpy()}")
-                    # print(f"    percent error: {np.abs(effector_data.iloc[i].to_numpy() - prediction)/effector_data.iloc[i].to_numpy() * 100}%")
-                    residuals = self.calculateResidualsArray(effector_data.iloc[i].to_numpy(), prediction)
+                    print(f"    true: {true}")
+                    # print(f"    squared diff: {loss.SquaredError().evaluateAsArray(true, prediction)}")
+                    residuals = self.calculateResidualsArray(true, prediction)
+                    print(f"    residual: {residuals}")
                     backpropagate(self,residuals)
+            else:
+                return ValueError(f"INVALID INPUT FOR BATCH_SIZE, {batch_size}")
         print("training complete!")
 
     def calculateResidualsArray(self,y_true,y_pred):
@@ -183,3 +200,6 @@ class Model():
                 print(f"    weights change: {modelDiff[j][i][0]}")
                 print(f"    bias change: {modelDiff[j][i][1]}")
         return modelDiff 
+    
+    def getLearningRate(self):
+        return self.optimizer.learningRate
