@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from log import Log, EpochLog
+import metrics
 import loss 
 import activation
 import optimizer as opt 
@@ -11,13 +13,25 @@ from backprop_helper import backpropagate
 
 class Model():
     '''
-    inputSize refers to the length of the vector associated with the input layer. likewise for the outputSize
-    the output layer SHOULD NOT use a layer object, and instead should use a vector
+    create a deep neural network model
+
+    Args:
+        inputSize: the number of features/effectors/inputs of the model
+        outputSize: the number of predictors/outputs of the model
+        activationFunc: an activation function that newly added layers by default will use. ReLU by default
+        lossFunc: a loss function used for training. Squared error by default
+        optimizer: the optimizer used for training. Stochastic Gradient Descent by default 
+            >>>(it is not quite SGD, it applies gradient descent to whatever batch size is present)
+        gradient_clipping_magnitude: the magnitude of a gradient before it gets clipped. None by default, meaning no clip is done
+        normalize_weights: allow the normalization of weights through the use of turning each weight into a multiplication of a vector and a scalar. False by default
     '''
-    def __init__(self, inputSize = 1, outputSize = 1, activationFunc = activation.Relu(), lossFunc = loss.SquaredError(), optimizer = opt.SGD(0.001)):
+    def __init__(
+            self, inputSize = 1, outputSize = 1, activationFunc = activation.Relu(), 
+            lossFunc = loss.SquaredError(), optimizer = opt.SGD(0.001), 
+            gradient_clipping_magnitude = None, normalize_weights = False, metrics = metrics.SquaredError()
+        ):
         self.inputSize = inputSize
         self.hiddenLayers = []
-        # self.learningRate = learningRate
         
         assert isinstance(activationFunc, activation.ActivationFunction), "ACTIVATION FUNCTION PARAMETER IS NOT OF TYPE ACTIVATIONFUNCTION"
         assert isinstance(lossFunc, loss.LossFunction), "LOSS FUNCTION PARAMETER IS NOT OF TYPE LOSSFUNCTION"
@@ -28,6 +42,10 @@ class Model():
         self.optimizer = optimizer
         self.outputLayer = layer.Layer(outputSize, inputSize, activationFunc)
 
+        self.gradient_clipping_magnitude = gradient_clipping_magnitude
+        self.normalize_weights = normalize_weights
+        self.metrics = metrics
+
     def predict(self, input):
         allLayers = self.getLayers()
         output = input
@@ -36,7 +54,8 @@ class Model():
             output = currentLayer.evaluate(output)
         return output
 
-    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, batch_size, epochs = 1):
+    # def train(self, predictor_data: pd.DataFrame, validation_effector, batch_size, epochs = 1):
+    def train(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame, validation_predictor: pd.DataFrame, validation_effector: pd.DataFrame, batch_size, epochs = 1):
         '''
         train the model 
 
@@ -47,9 +66,10 @@ class Model():
                 >>>accepted strings: "full-batch", "stochastic"
         '''
         assert (predictor_data.shape[0] == effector_data.shape[0]) 
-        
+        iterative_log = Log(self)
+        epoch_log = EpochLog(self)
 
-        for j in range(epochs):    
+        for j in range(epochs): 
             print(f"epoch {j + 1} begin")
             if (type(batch_size) == int):
                 assert (batch_size > 1), (f"INVALID INPUT FOR BATCH_SIZE, {batch_size}")
@@ -59,7 +79,16 @@ class Model():
                     true = effector_data.iloc[i].to_numpy()
                     prediction = self.predict(row)
                     residuals += self.calculateResidualsArray(true,prediction)
-                    if(i % batch_size == 0 and i != 0):
+
+                    iterative_log.update(true,prediction)
+                    if (i == 0):
+                        epoch_log.update(true,prediction)
+
+                        validation_true = validation_effector.iloc[i].to_numpy()
+                        validation_prediction = self.predict(validation_predictor.iloc[i].to_numpy())
+                        epoch_log.updateValidation(validation_true, validation_prediction)
+
+                    if((i % batch_size == 0 or i == len(predictor_data)) and i != 0):
                         backpropagate(self,residuals)
                         residuals = 0
 
@@ -70,6 +99,15 @@ class Model():
                     prediction = self.predict(row)
                     true = effector_data.iloc[i].to_numpy()
                     residuals += self.calculateResidualsArray(true, prediction)
+                    
+                    iterative_log.update(true,prediction)
+                    if (i == 0):
+                        epoch_log.update(true,prediction)
+
+                        validation_true = validation_effector.iloc[i].to_numpy()
+                        validation_prediction = self.predict(validation_predictor.iloc[i].to_numpy())
+                        epoch_log.updateValidation(validation_true, validation_prediction)
+                
                 backpropagate(self,residuals)
 
             elif batch_size == "stochastic":
@@ -77,37 +115,53 @@ class Model():
                     row = predictor_data.iloc[i].to_numpy()
                     prediction = self.predict(row)
                     true = effector_data.iloc[i].to_numpy()
+                    residuals = self.calculateResidualsArray(true, prediction)
                     print(f"iteration: {j,i}")
                     print(f"    prediction: {prediction}")
                     print(f"    true: {true}")
-                    # print(f"    squared diff: {loss.SquaredError().evaluateAsArray(true, prediction)}")
-                    residuals = self.calculateResidualsArray(true, prediction)
                     print(f"    residual: {residuals}")
+
+                    iterative_log.update(true,prediction)
+                    if (i == 0):
+                        epoch_log.update(true,prediction)
+
+                        validation_true = validation_effector.iloc[i].to_numpy()
+                        validation_prediction = self.predict(validation_predictor.iloc[i].to_numpy())
+                        epoch_log.updateValidation(validation_true, validation_prediction)
+
                     backpropagate(self,residuals)
             else:
                 return ValueError(f"INVALID INPUT FOR BATCH_SIZE, {batch_size}")
         print("training complete!")
 
+        epoch_log.addLossPlot()
+        epoch_log.addValidationLossPlot()
+        epoch_log.graph()
+
+        epoch_log.addPreformancePlot()
+        epoch_log.addValidationPreformancePlot()
+        epoch_log.graph()
+
+        iterative_log.addLossPlot()
+        iterative_log.graph()
+
+        iterative_log.addPreformancePlot()
+        iterative_log.graph()
+
     def calculateResidualsArray(self,y_true,y_pred):
         return self.lossFunc.evaluateAsArray(y_true,y_pred)
+    
+    def calculateResidualsSum(self,y_true,y_pred):
+        return self.lossFunc.evaluateAsSum(y_true,y_pred)
 
     def test(self, predictor_data: pd.DataFrame, effector_data: pd.DataFrame):
-        ssr = 0 # sum of squared residuals
-        sr = 0 # sum of residuals
-        ape = 0
+        metric_mean = 0
         for i in range(len(predictor_data)):
             prediction = self.predict(predictor_data.iloc[i].to_numpy())
             truth = effector_data.iloc[i].to_numpy()
-            residual = truth - prediction
-            ssr += residual * residual
-            sr += np.abs(residual)
-            ape += 100 * np.abs(residual)/truth
-        mse = ssr / len(predictor_data)
-        print(f"mean squared error: {mse}")
-        mr =  sr / len(predictor_data)
-        print(f"mean error: {mr}")
-        mape = ape / len(predictor_data)
-        print(f"mean absolute percent error: {mape}")
+            metric_mean += self.metrics.evaluate(truth,prediction)
+        metric_mean = metric_mean / len(predictor_data)
+        print(f'Mean {self.metrics.getName()}: {metric_mean}')
 
     def addHiddenLayer(self, layerSize):
         numHiddenLayers = len(self.hiddenLayers)

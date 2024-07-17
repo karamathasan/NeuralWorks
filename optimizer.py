@@ -5,7 +5,20 @@ class Optimizer():
         self.learningRate = learningRate
 
     def evaluate(self, input, position, gradient):
+        '''
+        evaluate the new parameter at a specific neuron
+        
+        Args: 
+            input: the input given to the optimizer/the parameter's value currently
+            position: the position of the paramater as a string "paramaterType: layer, neuron"
+                -> "parameterType" denotes weight or bias, or g or v when weight normalizing
+                -> ex. f"weight: 0, 1" denotes the weight at layer 0, neuron 1, both indexed from 0
+            gradient: the gradient of the paramater being updated
+        '''
         return self.func(input, position, gradient)
+    
+    def reset(self):
+        raise NotImplementedError
     
 class SGD(Optimizer):
     def __init__(self, learningRate):
@@ -25,12 +38,7 @@ class SGD_Momentum(Optimizer):
         return newVelocity
     
     def evaluate(self, input, position, gradient):
-        '''
-        evaluate the new parameter at a specific neuron
-        the velocity of a neuron is initialized to 0
-        the velocities of neurons will be saved to the velocities dictionary
-        the name of each entry in the diction will be the neurons coordinate: layer, neuron
-        '''
+
         output = self.func(input, position, gradient)
         # output = super().evaluate(input, position, gradient)
         return output
@@ -114,3 +122,8 @@ class Adam(Optimizer):
         output = super().evaluate(input, position, gradient)
         self.iterations[position] += 1 
         return output
+    
+    def reset(self):
+        self.moments = {}
+        self.velocities = {}
+        self.iterations = {}

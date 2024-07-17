@@ -1,9 +1,5 @@
 import numpy as np
 
-import layer as l
-import model as m
-import neuron as nrn
-
 residuals = []
 #potential source of error
 seen = {}
@@ -16,12 +12,12 @@ def reset():
 def normClip(gradient, threshold = 1000):
     clippedGrad = 0
     if np.linalg.norm(gradient) > threshold:
-        clippedGrad = gradient * (1000/np.linalg.norm(gradient))
+        clippedGrad = threshold * (gradient/np.linalg.norm(gradient))
     else:
         return gradient
     return clippedGrad
 
-def backpropagateWeight(layerIndex, neuronIndex, model, normalizeWeights = False):
+def backpropagateWeight(layerIndex, neuronIndex, model):
     def dLdG(layerIndex, neuronIndex, model):
         derivativeName = getDerivativeName("L",layerIndex,neuronIndex,"g",layerIndex,neuronIndex)
         if (seen.get(derivativeName) is not None):
@@ -61,15 +57,21 @@ def backpropagateWeight(layerIndex, neuronIndex, model, normalizeWeights = False
     layer = model.getLayerByIndex(layerIndex)
     neuron = layer.neurons[neuronIndex]
 
-    gradient = normClip(dLdW(layerIndex, neuronIndex, model))
+    gradient = dLdW(layerIndex, neuronIndex, model)
+
+    # print(f"gradient: {gradient}")
+    # print(f"gradient norm: {np.linalg.norm(gradient)}")
+
+    if (model.gradient_clipping_magnitude is not None):
+        gradient = normClip(gradient, model.gradient_clipping_magnitude)
     # print(f"layer: {layerIndex}, neuron: {neuronIndex}:: {gradient}")
 
-    if (normalizeWeights):
+    if (model.normalize_weights):
         g, v = getWeightParameters(neuron.weights)
         gGrad = dLdG(layerIndex, neuronIndex, model)
         vGrad = dLdV(layerIndex, neuronIndex, model)
-        g = model.optimizer.evaluate(g,gGrad)
-        v = model.optimizer.evaluate(v,vGrad)
+        g = model.optimizer.evaluate(g,f"g: {layerIndex}, {neuronIndex}",gGrad)
+        v = model.optimizer.evaluate(v,f"v: {layerIndex}, {neuronIndex}",vGrad)
         neuron.weights = g * (v/np.linalg.norm(v))
     else:
 
@@ -77,15 +79,15 @@ def backpropagateWeight(layerIndex, neuronIndex, model, normalizeWeights = False
         # print(f"neuron weights shape: {neuron.weights.shape}")
         # print(f"neuron weight gradient shape {gradient.shape}")
         # neuron.weights = neuron.weights - (gradient * model.getLearningRate())
-        neuron.weights = model.optimizer.evaluate(neuron.weights, f"{layerIndex}, {neuronIndex}", gradient)
+        neuron.weights = model.optimizer.evaluate(neuron.weights, f"weight: {layerIndex}, {neuronIndex}", gradient)
 
 def backpropagateBias(layerIndex, neuronIndex, model):
     gradient = normClip(dLdB(layerIndex, neuronIndex, model))
     layer = model.getLayerByIndex(layerIndex)
     neuron = layer.neurons[neuronIndex]
     # print(f"bias change{model.optimizer.evaluate(neuron.weights, gradient) - neuron.weights}")
-    neuron.bias = neuron.bias - (gradient * model.getLearningRate()) 
-    # neuron.weights = model.optimizer.evaluate(neuron.weights, gradient)
+    # neuron.bias = neuron.bias - (gradient * model.getLearningRate()) 
+    neuron.bias = model.optimizer.evaluate(neuron.bias, f"bias: {layerIndex}, {neuronIndex}", gradient)
 
 def getDerivativeName(numerator, numerL, numerN, denominator, denomL, denomN):
     return f"d{numerator}[{numerL}, {numerN}]/d{denominator}[{denomL},{denomN}]"

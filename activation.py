@@ -29,6 +29,8 @@ class Relu(ActivationFunction):
     
 class Sigmoid(ActivationFunction):
     def __init__(self):
-        activationFunc = lambda x : (1/(1+np.exp(-x)))
+        # activationFunc = lambda x : (1/(1+np.exp(-x)))
+        activationFunc = lambda x : (1/(1+np.exp(-x))) if x > 0 else (np.exp(x)/(1+np.exp(x)))
+
         activationDerivative = lambda x :  activationFunc(x) * (1-activationFunc(x))
         super().__init__(activationFunc, activationDerivative)
