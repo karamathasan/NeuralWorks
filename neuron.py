@@ -3,6 +3,7 @@ import numpy as np
 import random
 
 import activation
+from trainableParam import Weight, Bias
 
 class Neuron():
     def __init__(self, numConnections, activationFunc = None):
@@ -11,6 +12,8 @@ class Neuron():
         self.numConnections = numConnections
         # self.bias = random.uniform(-1,1)
         self.bias = 0
+
+        # self.trainableParams = [Weight("weight", self),Bias("bias", self)]
 
         self.input = None
         self.activation = 0
@@ -22,7 +25,7 @@ class Neuron():
     
     def initializeWeights(self, n):
         weights = self.createRandoms(-1,1,n)
-        return weights * np.sqrt(1/ n)
+        return weights * np.sqrt(1/n)
     
     def createRandoms(self, min, max, quantity):
         # randoms = []

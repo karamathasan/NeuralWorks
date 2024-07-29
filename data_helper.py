@@ -1,4 +1,5 @@
 import numpy as np
+# from sklearn import  
 def dataSplit(predictor_data, effector_data, percentageTraining = 0.6, shuffleProportion = 0.5):
     assert(predictor_data.shape[0] == effector_data.shape[0])
     rows = predictor_data.shape[0]

@@ -1,33 +1,66 @@
 import numpy as np
 import neuron as n
 
-'''
-the layer contains neurons. each neuron has an array/vector of weights associated with its output, another array/ vector of biases and an activation function
-the length of these vectors should be equal to the size of the next layer
-'''
+class BaseLayer():
+    '''
+    base class for all kinds of layers. 
+
+    a "layer" is a computational object that has inputs x and activation of y where x and y are both vectors and y is a function of x
+    ex. in a dense layer, y = sigma(wx+b)
+    ex. in a batch layer y = gama xHat + beta where xHat is the batch normalized value for the input, x
+    '''
+    def __init__(self, size, inputs, model):
+        pass
+    
+    def evaluate(self):
+        pass
+
+    def resetinputs(self):
+        pass
+
+    def getParams(self):
+        pass
+
+    def dOutdIn(self, inIndex, outIndex):
+        pass
+    
 class Layer():
-    # the direction of connections is backward 
-    def __init__(self, size, connections, activationFunc = None):
+    '''
+    the typical fully connected layer of neurons. 
+    Args:
+        size: the number of neurons in this layer
+        inputs: the number of inputs to this layer. Should be equal to the size of the previous layer
+        model: the model associated with the layer
+        activationFunc: the activation function of each neuron in this layer
+    '''
+    def __init__(self, size, inputs, model, activationFunc = None):
         self.neurons = []
-        self.connections = connections
+        self.inputs = inputs
+        self.model = model
+        self.defaultActivation = activationFunc
         for i in range(size):
-            # generate 'size' many neurons with random weights and biases that output to 'connections' many inputs in the preceding layer 
-            self.neurons.append(n.Neuron(connections, activationFunc))
+            self.neurons.append(n.Neuron(inputs, activationFunc))
 
     def getSize(self):
         return len(self.neurons)
     
-    def resetConnections(self, connections, activationFunc):
-        self.connections = connections
+    def setActivation(self, activationFunc):
+        self.inputs 
+        for i in range(len(self.neurons)):
+            if (activationFunc != None):
+                self.neurons[i] = n.Neuron(self.inputs, activationFunc)
+
+    def resetInputs(self, inputs, activationFunc = None):
+        self.inputs = inputs
             
         for i in range(len(self.neurons)):
             if (activationFunc != None):
-                self.neurons[i] = n.Neuron(connections, activationFunc)
+                self.neurons[i] = n.Neuron(inputs, activationFunc)
             else:
-                self.neurons[i] = n.Neuron(connections, "relu")
+                self.neurons[i] = n.Neuron(inputs, self.defaultActivation)
 
     def evaluate(self, input: np.array):
-        assert(input.shape[0] == self.connections)
+        assert(input.shape[0] == self.inputs)
         output = np.zeros(len(self.neurons))
         for i in range(len(self.neurons)):
             output[i] = self.neurons[i].evaluate(input)
@@ -39,7 +72,7 @@ class Layer():
             return False
         for i in range(len(self.neurons)):
             result = result and (self.neurons[i].equals(other.neurons[i]))
-        result = result and (self.connections == other.connections)
+        result = result and (self.inputs == other.inputs)
         return result
     
     def getNeurons(self):
@@ -56,3 +89,20 @@ class Layer():
         for neuron in self.neurons:
             activationDerivative = np.append(activationDerivative, neuron.activationDerivative())
         return activationDerivative
+
+class BatchNorm(BaseLayer):
+    def __init__(self, size, model):
+        '''
+        creates a Batch Normalization layer
+        The inputs to this layer are 
+        '''
+        self.size = size
+        self.inputs = size
+        self.model = model
+        
+        self.gamma = 0
+        self.beta = 0
+        self.batchMean = 0
+        self.batchVariance = 0
+        self.rollingMean = 0
+        self.rollingVariance = 0

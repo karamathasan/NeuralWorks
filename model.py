@@ -226,6 +226,9 @@ class Model():
         allLayers.append(self.outputLayer)
         return allLayers
     
+    def getOutputLayer(self):
+        return self.outputLayer
+    
     def getParams(self, printParams = False):
         modelParams = []
         for j in range(len(self.getLayers())):
