@@ -8,12 +8,11 @@ from trainableParam import Weight, Bias
 class Neuron():
     def __init__(self, numConnections, activationFunc = None):
         # self.weights = self.createRandoms( -1,1,numConnections)
-        self.weights = self.initializeWeights(numConnections)
-        self.numConnections = numConnections
-        # self.bias = random.uniform(-1,1)
-        self.bias = 0
+        # self.weights = self.initializeWeights(numConnections)
 
-        # self.trainableParams = [Weight("weight", self),Bias("bias", self)]
+        # self.bias = 0
+
+        self.trainableParams = [Weight("weight", self),Bias("bias", self)]
 
         self.input = None
         self.activation = 0
